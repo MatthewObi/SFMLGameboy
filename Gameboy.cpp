@@ -10,10 +10,10 @@ using namespace std;
 
 int main()
 {
-	sf::RenderWindow window(sf::VideoMode(256, 240), "Gameboy");
+	sf::RenderWindow window(sf::VideoMode(160, 144), "Gameboy");
 	window.setFramerateLimit(60);
 
-	Emulator GB(window);
+	Emulator* GB = new Emulator(window);
 
 	while (window.isOpen()) {
 		sf::Event e;
@@ -22,7 +22,7 @@ int main()
 				window.close();
 		}
 		window.clear();
-		GB.Update();
+		GB->Update();
 		window.display();
 	}
 }
