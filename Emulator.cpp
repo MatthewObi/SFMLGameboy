@@ -1,4 +1,5 @@
 #include "Emulator.h"
+#include "GBUtil.h"
 
 void Emulator::InitState()
 {
@@ -48,6 +49,8 @@ void Emulator::InitState()
 
     //Clear the screen data
     ClearScreenData();
+    m_CurrentROMBank = 1;
+    std::memset(&m_CartridgeMemory, 0, sizeof(m_CartridgeMemory));
 }
 
 void Emulator::ClearScreenData()
@@ -76,6 +79,183 @@ void Emulator::UpdateGraphics(int cycles)
 
 void Emulator::DoInterupts()
 {
+}
+
+void Emulator::LoadCart(const char* path)
+{
+    FILE* f;
+    f = fopen(path, "rb");
+    fread(m_CartridgeMemory, 1, sizeof m_CartridgeMemory, f);
+    fclose(f);
+
+    m_MBC1 = false;
+    m_MBC2 = false;
+
+    switch (m_CartridgeMemory[0x147])
+    {
+    case 1: m_MBC1 = true; break;
+    case 2: m_MBC1 = true; break;
+    case 3: m_MBC1 = true; break;
+    case 5: m_MBC2 = true; break;
+    case 6: m_MBC2 = true; break;
+    default: break;
+    }
+
+    memset(&m_RAMBanks, 0, sizeof(m_RAMBanks));
+    m_CurrentRAMBank = 0;
+}
+
+void Emulator::WriteMemory(WORD address, BYTE data)
+{
+    if (address < 0x8000)
+    {
+        HandleBanking(address, data);
+    }
+
+    else if ((address >= 0xA000) && (address < 0xC000))
+    {
+        if (m_EnableRAM)
+        {
+            WORD newAddress = address - 0xA000;
+            m_RAMBanks[newAddress + (m_CurrentRAMBank * 0x2000)] = data;
+        }
+    }
+
+    // writing to ECHO ram also writes in RAM
+    else if ((address >= 0xE000) && (address < 0xFE00))
+    {
+        m_Rom[address] = data;
+        WriteMemory(address - 0x2000, data);
+    }
+
+    // this area is restricted
+    else if ((address >= 0xFEA0) && (address < 0xFEFF))
+    {
+    }
+
+    // no control needed over this area so write to memory
+    else
+    {
+        m_Rom[address] = data;
+    }
+}
+
+BYTE Emulator::ReadMemory(WORD address) const
+{
+    // are we reading from the rom memory bank?
+    if ((address >= 0x4000) && (address <= 0x7FFF))
+    {
+        WORD newAddress = address - 0x4000;
+        return m_CartridgeMemory[newAddress + (m_CurrentROMBank * 0x4000)];
+    }
+
+    // are we reading from ram memory bank?
+    else if ((address >= 0xA000) && (address <= 0xBFFF))
+    {
+        WORD newAddress = address - 0xA000;
+        return m_RAMBanks[newAddress + (m_CurrentRAMBank * 0x2000)];
+    }
+
+    return m_Rom[address];
+}
+
+void Emulator::HandleBanking(WORD address, BYTE data)
+{
+    // do RAM enabling
+    if (address < 0x2000)
+    {
+        if (m_MBC1 || m_MBC2)
+        {
+            DoRAMBankEnable(address, data);
+        }
+    }
+
+    // do ROM bank change
+    else if ((address >= 0x200) && (address < 0x4000))
+    {
+        if (m_MBC1 || m_MBC2)
+        {
+            DoChangeLoROMBank(data);
+        }
+    }
+
+    // do ROM or RAM bank change
+    else if ((address >= 0x4000) && (address < 0x6000))
+    {
+        // there is no rambank in mbc2 so always use rambank 0
+        if (m_MBC1)
+        {
+            if (m_ROMBanking)
+            {
+                DoChangeHiRomBank(data);
+            }
+            else
+            {
+                DoRAMBankChange(data);
+            }
+        }
+    }
+
+    // this will change whether we are doing ROM banking
+    // or RAM banking with the above if statement
+    else if ((address >= 0x6000) && (address < 0x8000))
+    {
+        if (m_MBC1)
+            DoChangeROMRAMMode(data);
+    }
+}
+
+void Emulator::DoRAMBankEnable(WORD address, BYTE data)
+{
+    if (m_MBC2)
+    {
+        if (TestBit(address, 4) == 1) return;
+    }
+
+    BYTE testData = data & 0xF;
+    if (testData == 0xA)
+        m_EnableRAM = true;
+    else if (testData == 0x0)
+        m_EnableRAM = false;
+}
+
+void Emulator::DoChangeLoROMBank(BYTE data)
+{
+    if (m_MBC2)
+    {
+        m_CurrentROMBank = data & 0xF;
+        if (m_CurrentROMBank == 0) m_CurrentROMBank++;
+        return;
+    }
+
+    const BYTE lower5 = data & 31;
+    m_CurrentROMBank &= 224; // turn off the lower 5
+    m_CurrentROMBank |= lower5;
+    if (m_CurrentROMBank == 0) m_CurrentROMBank++;
+}
+
+void Emulator::DoChangeHiRomBank(BYTE data)
+{
+    // turn off the upper 3 bits of the current rom
+    m_CurrentROMBank &= 31;
+
+    // turn off the lower 5 bits of the data
+    data &= 224;
+    m_CurrentROMBank |= data;
+    if (m_CurrentROMBank == 0) m_CurrentROMBank++;
+}
+
+void Emulator::DoRAMBankChange(BYTE data)
+{
+    m_CurrentRAMBank = data & 0x3;
+}
+
+void Emulator::DoChangeROMRAMMode(BYTE data)
+{
+    BYTE newData = data & 0x1;
+    m_ROMBanking = (newData == 0) ? true : false;
+    if (m_ROMBanking)
+        m_CurrentRAMBank = 0;
 }
 
 void Emulator::Update()

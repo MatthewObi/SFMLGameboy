@@ -8,7 +8,12 @@ class Emulator
 {
 private:
 	sf::RenderWindow& window;
-	GBCart cart;
+	BYTE m_CartridgeMemory[0x200000];
+	bool m_MBC1;
+	bool m_MBC2;
+
+	BYTE m_RAMBanks[0x8000];
+	BYTE m_CurrentRAMBank;
 	BYTE m_ScreenData[160][144][3];
 	BYTE m_Rom[0x10000];
 
@@ -30,6 +35,11 @@ private:
 	WORD m_ProgramCounter;
 	Register m_StackPointer;
 
+	BYTE m_CurrentROMBank;
+
+	bool m_EnableRAM;
+	bool m_ROMBanking;
+
 	void InitState();
 	void ClearScreenData();
 public:
@@ -38,6 +48,15 @@ public:
 	void UpdateTimers(int cycles);
 	void UpdateGraphics(int cycles);
 	void DoInterupts();
+	void LoadCart(const char* path);
+	void WriteMemory(WORD address, BYTE data);
+	BYTE ReadMemory(WORD address) const;
+	void HandleBanking(WORD address, BYTE data);
+	void DoRAMBankEnable(WORD address, BYTE data);
+	void DoChangeLoROMBank(BYTE data);
+	void DoChangeHiRomBank(BYTE data);
+	void DoRAMBankChange(BYTE data);
+	void DoChangeROMRAMMode(BYTE data);
 	void Update();
 	void RenderScreen();
 };
