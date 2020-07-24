@@ -58,6 +58,7 @@ void Emulator::ClearScreenData()
 Emulator::Emulator(sf::RenderWindow& window)
     : window(window)
 {
+    InitState();
 }
 
 int Emulator::ExecuteNextOpcode()

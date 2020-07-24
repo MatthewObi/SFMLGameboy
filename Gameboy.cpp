@@ -25,4 +25,6 @@ int main()
 		GB->Update();
 		window.display();
 	}
+
+	delete GB;
 }

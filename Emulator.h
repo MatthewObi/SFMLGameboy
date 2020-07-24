@@ -3,7 +3,6 @@
 
 #include <SFML/Graphics.hpp>
 #include "GBCart.h"
-#include "GBScreen.h"
 
 class Emulator
 {
