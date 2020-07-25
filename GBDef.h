@@ -11,4 +11,8 @@ typedef signed short SIGNED_WORD;
 #define FLAG_H 5
 #define FLAG_C 4
 
+#define TIMA 0xFF05
+#define TMA 0xFF06
+#define TMC 0xFF07 
+
 #endif //GBDEF_H

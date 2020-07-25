@@ -2,7 +2,7 @@
 #define EMULATOR_H
 
 #include <SFML/Graphics.hpp>
-#include "GBCart.h"
+#include "GBDef.h"
 
 class Emulator
 {
@@ -40,14 +40,24 @@ private:
 	bool m_EnableRAM;
 	bool m_ROMBanking;
 
+	#define CLOCKSPEED 4194304
+	int frequency = 4096;
+	int m_TimerCounter = (CLOCKSPEED / frequency);
+	int m_DividerCounter = 0;
+
 	void InitState();
 	void ClearScreenData();
 public:
 	explicit Emulator(sf::RenderWindow& window);
 	int ExecuteNextOpcode();
 	void UpdateTimers(int cycles);
+	bool IsClockEnabled() const;
+	BYTE GetClockFreq() const;
+	void SetClockFreq();
+	void DoDividerRegister(int cycles);
 	void UpdateGraphics(int cycles);
 	void DoInterupts();
+	void RequestInterupt(int id);
 	void LoadCart(const char* path);
 	void WriteMemory(WORD address, BYTE data);
 	BYTE ReadMemory(WORD address) const;
