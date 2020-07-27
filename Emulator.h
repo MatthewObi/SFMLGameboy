@@ -8,6 +8,8 @@ class Emulator
 {
 private:
 	sf::RenderWindow& window;
+	sf::Image image;
+	sf::Texture t;
 	BYTE m_CartridgeMemory[0x200000];
 	bool m_MBC1;
 	bool m_MBC2;
@@ -31,11 +33,12 @@ private:
 	Register m_RegisterBC;
 	Register m_RegisterDE;
 	Register m_RegisterHL;
+	BYTE lcdControl;
 
 	WORD m_ProgramCounter;
 	Register m_StackPointer;
 
-	BYTE m_CurrentROMBank;
+	BYTE m_CurrentROMBank = 1;
 
 	bool m_EnableRAM;
 	bool m_ROMBanking;
@@ -45,6 +48,8 @@ private:
 	int m_TimerCounter = (CLOCKSPEED / frequency);
 	int m_DividerCounter = 0;
 
+	bool m_InteruptMaster = false;
+	int m_ScanlineCounter = 0;
 	void InitState();
 	void ClearScreenData();
 public:
@@ -56,8 +61,17 @@ public:
 	void SetClockFreq();
 	void DoDividerRegister(int cycles);
 	void UpdateGraphics(int cycles);
+	void SetLCDStatus();
+	bool IsLCDEnabled() const;
+	void DrawScanLine();
+	void RenderTiles();
+	void RenderSprites();
+	COLOR GetColor(BYTE colorNum, WORD address) const;
 	void DoInterupts();
 	void RequestInterupt(int id);
+	void ServiceInterupt(int interupt);
+	void PushWordOntoStack(WORD word);
+	WORD PopWordOffStack();
 	void LoadCart(const char* path);
 	void WriteMemory(WORD address, BYTE data);
 	BYTE ReadMemory(WORD address) const;
@@ -67,6 +81,7 @@ public:
 	void DoChangeHiRomBank(BYTE data);
 	void DoRAMBankChange(BYTE data);
 	void DoChangeROMRAMMode(BYTE data);
+	void DoDMATransfer(BYTE data);
 	void Update();
 	void RenderScreen();
 };

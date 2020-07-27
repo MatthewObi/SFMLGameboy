@@ -14,6 +14,11 @@ int main()
 	window.setFramerateLimit(60);
 
 	Emulator* GB = new Emulator(window);
+	GB->LoadCart("TESTld.gb");
+	//GB->LoadCart("Tetris.gb");
+
+	window.clear(sf::Color::White);
+	window.display();
 
 	while (window.isOpen()) {
 		sf::Event e;
