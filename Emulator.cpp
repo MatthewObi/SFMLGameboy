@@ -585,20 +585,14 @@ void Emulator::ServiceInterupt(int interupt)
 
 void Emulator::PushWordOntoStack(WORD word)
 {
-    WriteMemory(m_StackPointer.reg + 1, (BYTE)(word >> 8));
     m_StackPointer.reg--;
     WriteMemory(m_StackPointer.reg, (BYTE)(word >> 8));
     m_StackPointer.reg--;
     WriteMemory(m_StackPointer.reg, (BYTE)(word & 0xFF));
-    m_StackPointer.reg -= 2;
 }
 
 WORD Emulator::PopWordOffStack()
 {
-    m_StackPointer.reg += 2;
-    WORD word = 0;
-    word |= ((WORD)ReadMemory(m_StackPointer.reg + 1) << 8);
-    word |= ((WORD)ReadMemory(m_StackPointer.reg));
     WORD word = ((WORD)ReadMemory(m_StackPointer.reg));
     m_StackPointer.reg++;
     word |= ((WORD)ReadMemory(m_StackPointer.reg) << 8);
@@ -695,6 +689,12 @@ void Emulator::WriteMemory(WORD address, BYTE data)
     }
 }
 
+void Emulator::WriteWord(WORD address, WORD data)
+{
+    WriteMemory(address + 1, data >> 8);
+    WriteMemory(address, data & 0xFF);
+}
+
 BYTE Emulator::ReadMemory(WORD address) const
 {
     // are we reading from the rom memory bank?
@@ -711,7 +711,17 @@ BYTE Emulator::ReadMemory(WORD address) const
         return m_RAMBanks[newAddress + (m_CurrentRAMBank * 0x2000)];
     }
 
+    else if (0xFF00 == address)
+        return GetJoypadState();
+
     return m_Rom[address];
+}
+
+WORD Emulator::ReadWord() const
+{
+    BYTE a = ReadMemory(m_ProgramCounter + 1);
+    BYTE b = ReadMemory(m_ProgramCounter);
+    return ((WORD)a << 8) | b;
 }
 
 void Emulator::HandleBanking(WORD address, BYTE data)
@@ -821,6 +831,71 @@ void Emulator::DoDMATransfer(BYTE data)
         WriteMemory(0xFE00 + i, ReadMemory(address + i));
     }
 }
+
+void Emulator::KeyPressed(int key)
+{
+    bool previouslyUnset = false;
+
+    // if setting from 1 to 0 we may have to request an interupt
+    if (TestBit(m_JoypadState, key) == false)
+        previouslyUnset = true;
+
+    // remember if a keypressed its bit is 0 not 1
+    m_JoypadState = BitReset(m_JoypadState, key);
+
+    // button pressed
+    bool button = true;
+
+    // is this a standard button or a directional button?
+    if (key > 3)
+        button = true;
+    else // directional button pressed
+        button = false;
+
+    BYTE keyReq = m_Rom[0xFF00];
+    bool requestInterupt = false;
+
+    // only request interupt if the button just pressed is
+    // the style of button the game is interested in
+    if (button && !TestBit(keyReq, 5))
+        requestInterupt = true;
+
+    // same as above but for directional button
+    else if (!button && !TestBit(keyReq, 4))
+        requestInterupt = true;
+
+    // request interupt
+    if (requestInterupt && !previouslyUnset)
+        RequestInterupt(4);
+}
+
+void Emulator::KeyReleased(int key)
+{
+    m_JoypadState = BitSet(m_JoypadState, key);
+}
+
+BYTE Emulator::GetJoypadState() const
+{
+    BYTE res = m_Rom[0xFF00];
+    // flip all the bits
+    res ^= 0xFF;
+
+    // are we interested in the standard buttons?
+    if (!TestBit(res, 4))
+    {
+        BYTE topJoypad = m_JoypadState >> 4;
+        topJoypad |= 0xF0; // turn the top 4 bits on
+        res &= topJoypad; // show what buttons are pressed
+    }
+    else if (!TestBit(res, 5))//directional buttons
+    {
+        BYTE bottomJoypad = m_JoypadState & 0xF;
+        bottomJoypad |= 0xF0;
+        res &= bottomJoypad;
+    }
+    return res;
+}
+
 void Emulator::Update()
 {
     const int MAXCYCLES = 69905;

@@ -21,4 +21,13 @@ typedef unsigned char COLOR;
 #define TMA 0xFF06
 #define TMC 0xFF07 
 
+#define BUTTON_RIGHT 0
+#define BUTTON_LEFT 1
+#define BUTTON_UP 2
+#define BUTTON_DOWN 3
+#define BUTTON_A 4
+#define BUTTON_B 5
+#define BUTTON_SELECT 6
+#define BUTTON_START 7
+
 #endif //GBDEF_H

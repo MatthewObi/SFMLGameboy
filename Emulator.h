@@ -34,6 +34,7 @@ private:
 	Register m_RegisterDE;
 	Register m_RegisterHL;
 	BYTE lcdControl;
+	BYTE m_JoypadState;
 
 	WORD m_ProgramCounter;
 	Register m_StackPointer;
@@ -50,6 +51,9 @@ private:
 
 	bool m_InteruptMaster = false;
 	int m_ScanlineCounter = 0;
+	bool m_WaitForJoypad = false;
+	bool m_WaitForInterupt = false;
+
 	void InitState();
 	void ClearScreenData();
 public:
@@ -74,7 +78,9 @@ public:
 	WORD PopWordOffStack();
 	void LoadCart(const char* path);
 	void WriteMemory(WORD address, BYTE data);
+	void WriteWord(WORD address, WORD data);
 	BYTE ReadMemory(WORD address) const;
+	WORD ReadWord() const;
 	void HandleBanking(WORD address, BYTE data);
 	void DoRAMBankEnable(WORD address, BYTE data);
 	void DoChangeLoROMBank(BYTE data);
@@ -82,6 +88,9 @@ public:
 	void DoRAMBankChange(BYTE data);
 	void DoChangeROMRAMMode(BYTE data);
 	void DoDMATransfer(BYTE data);
+	void KeyPressed(int key);
+	void KeyReleased(int key);
+	BYTE GetJoypadState() const;
 	void Update();
 	void RenderScreen();
 };
