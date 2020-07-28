@@ -586,6 +586,9 @@ void Emulator::ServiceInterupt(int interupt)
 void Emulator::PushWordOntoStack(WORD word)
 {
     WriteMemory(m_StackPointer.reg + 1, (BYTE)(word >> 8));
+    m_StackPointer.reg--;
+    WriteMemory(m_StackPointer.reg, (BYTE)(word >> 8));
+    m_StackPointer.reg--;
     WriteMemory(m_StackPointer.reg, (BYTE)(word & 0xFF));
     m_StackPointer.reg -= 2;
 }
@@ -596,6 +599,10 @@ WORD Emulator::PopWordOffStack()
     WORD word = 0;
     word |= ((WORD)ReadMemory(m_StackPointer.reg + 1) << 8);
     word |= ((WORD)ReadMemory(m_StackPointer.reg));
+    WORD word = ((WORD)ReadMemory(m_StackPointer.reg));
+    m_StackPointer.reg++;
+    word |= ((WORD)ReadMemory(m_StackPointer.reg) << 8);
+    m_StackPointer.reg++;
     return word;
 }
 
@@ -621,6 +628,9 @@ void Emulator::LoadCart(const char* path)
 
     memset(&m_RAMBanks, 0, sizeof(m_RAMBanks));
     m_CurrentRAMBank = 0;
+
+    //Copy first 0x8000 bytes to ROM
+    memcpy(m_Rom, m_CartridgeMemory, 0x8000);
 }
 
 void Emulator::WriteMemory(WORD address, BYTE data)
